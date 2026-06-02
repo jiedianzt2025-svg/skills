@@ -1,0 +1,4 @@
+interface:
+  display_name: "公众号读取链接"
+  short_description: "抓取公众号公开文章列表并导出 CSV"
+  default_prompt: "Use $wechat-article-link-export to collect public article links for this WeChat Official Account URL and export a CSV."
