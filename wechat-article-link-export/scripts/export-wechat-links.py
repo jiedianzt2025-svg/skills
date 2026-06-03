@@ -12,7 +12,6 @@ import argparse
 import csv
 import html
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -75,8 +74,7 @@ def parse_seed_metadata(seed_url: str) -> dict[str, str]:
 
 
 def default_mcporter_config() -> Path:
-    home = Path.home()
-    return home / ".agent-reach" / "config" / "mcporter.json"
+    return Path.home() / ".agent-reach" / "config" / "mcporter.json"
 
 
 def find_mcporter() -> str:
@@ -114,7 +112,6 @@ def call_exa_search(query: str, config_path: Path, num_results: int = 100) -> st
 
 def extract_jintiankansha_article_urls(text: str) -> list[str]:
     urls = re.findall(r"https?://www\.jintiankansha\.me/t/[A-Za-z0-9_-]+", text)
-    # preserve order
     return list(dict.fromkeys(urls))
 
 
@@ -129,7 +126,7 @@ def extract_column_url_from_article(article_url: str) -> str:
     return urljoin(JINTIANKANSHA, matches[0])
 
 
-def discover_column(seed_url: str, metadata: dict[str, str], config_path: Path) -> tuple[str, str]:
+def discover_column(metadata: dict[str, str], config_path: Path) -> tuple[str, str]:
     terms = [metadata.get("nickname"), metadata.get("author"), metadata.get("title"), metadata.get("account")]
     useful_terms = " ".join(t for t in terms if t)
     queries = [
@@ -152,8 +149,6 @@ def crawl_column(column_url: str, max_pages: int = 500) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     seen: set[str] = set()
     empty_pages = 0
-    column_path = re.search(r"/column/[A-Za-z0-9_-]+", column_url)
-    column_marker = column_path.group(0) if column_path else ""
 
     for page_no in range(1, max_pages + 1):
         page_url = column_url if page_no == 1 else f"{column_url}?page={page_no}"
@@ -172,10 +167,6 @@ def crawl_column(column_url: str, max_pages: int = 500) -> list[dict[str, str]]:
             article_id = url.rsplit("/", 1)[-1]
             title = clean_text(match.group(2))
             if not title or url in seen:
-                continue
-            # Keep links from this column. This filters unrelated recommendations on many pages.
-            nearby = page[match.end() : match.end() + 800]
-            if column_marker and column_marker not in nearby and page_no > 1:
                 continue
             seen.add(url)
             rows.append(
@@ -255,7 +246,7 @@ def main() -> int:
 
     column_url = args.column_url or ""
     if not column_url:
-        column_url, transcript = discover_column(args.seed_url, metadata, Path(args.config))
+        column_url, transcript = discover_column(metadata, Path(args.config))
         if not column_url:
             print("Could not auto-discover a public historical column. Search transcript follows:", file=sys.stderr)
             print(transcript, file=sys.stderr)
